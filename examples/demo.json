@@ -1,0 +1,8 @@
+{
+  "cases": [
+    {"id": "refund-grounded", "question": "What is the refund window?", "answer": "Refunds are available within 30 days of purchase [policy].", "sources": [{"id": "policy", "text": "Refunds are available within 30 days of purchase. Contact support with your order number."}]},
+    {"id": "refund-drift", "question": "What is the refund window?", "answer": "Refunds are available within 90 days of purchase [policy].", "sources": [{"id": "policy", "text": "Refunds are available within 30 days of purchase. Contact support with your order number."}]},
+    {"id": "invented-reference", "question": "Is support available?", "answer": "Support is available 24 hours per day [missing].", "sources": [{"id": "hours", "text": "Support operates Monday through Friday from 9 to 17."}]},
+    {"id": "missing-citation-es", "question": "¿Cuánto dura la garantía?", "answer": "La garantía dura 12 meses.", "sources": [{"id": "garantia", "text": "La garantía del producto dura 12 meses desde la compra."}]}
+  ]
+}
