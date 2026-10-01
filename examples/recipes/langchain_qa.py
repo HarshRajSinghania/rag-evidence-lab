@@ -59,6 +59,19 @@ def document_text(doc: dict) -> str:
     raise ValueError("each source document needs non-empty page_content text")
 
 
+def _add_source(doc: dict, index: int, seen: set, sources: list) -> None:
+    if not isinstance(doc, dict):
+        raise ValueError("source document must be an object")
+    sid = source_id(doc, index)
+    if sid in seen:
+        raise ValueError(
+            f"duplicate source ID {sid!r} after sanitization; "
+            "refusing to rewrite an existing citation target"
+        )
+    seen.add(sid)
+    sources.append({"id": sid, "text": document_text(doc)})
+
+
 def convert_record(record: dict, index: int) -> dict:
     if not isinstance(record, dict):
         raise ValueError("each LangChain record must be an object")
@@ -72,16 +85,7 @@ def convert_record(record: dict, index: int) -> dict:
     sources = []
     seen = set()
     for i, doc in enumerate(raw_docs):
-        if not isinstance(doc, dict):
-            raise ValueError("source document must be an object")
-        sid = source_id(doc, i)
-        if sid in seen:
-            raise ValueError(
-                f"duplicate source ID {sid!r} after sanitization; "
-                "refusing to rewrite an existing citation target"
-            )
-        seen.add(sid)
-        sources.append({"id": sid, "text": document_text(doc)})
+        _add_source(doc, i, seen, sources)
     case_id = record.get("id")
     if not isinstance(case_id, str) or not case_id.strip():
         case_id = f"langchain-{index + 1}"
