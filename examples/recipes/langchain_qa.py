@@ -74,7 +74,7 @@ def convert_record(record: dict, index: int) -> dict:
     for i, doc in enumerate(raw_docs):
         if not isinstance(doc, dict):
             raise ValueError("source document must be an object")
-    sid = source_id(doc, i)
+        sid = source_id(doc, i)
         if sid in seen:
             raise ValueError(
                 f"duplicate source ID {sid!r} after sanitization; "
