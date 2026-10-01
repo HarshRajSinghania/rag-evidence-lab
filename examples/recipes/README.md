@@ -5,17 +5,22 @@ Small, dependency-free converters that turn a documented RAG export into the
 
 ## LangChain RetrievalQA (0.2 / 0.3 document shape)
 
-Tested against the LangChain `source_documents` object used by RetrievalQA /
-create_retrieval_chain in **langchain 0.3.14**: each document has
-`page_content` (string) and optional `metadata` (`id`, `source`, or
-`filename`). The recipe does **not** import LangChain and does not call a model.
+Checked with a **synthetic, LangChain-shaped fixture** that mirrors the
+`source_documents` object used by RetrievalQA / create_retrieval_chain
+(page_content + optional metadata `id` / `source` / `filename`). The tests
+do **not** import LangChain and were not run against an installed LangChain
+version. The recipe does not call a model.
 
 ### Citation formatting
 
 - Source IDs come from `metadata.id`, then `metadata.source`, then
   `metadata.filename`, then `doc-N`. Path prefixes are dropped.
+- An explicit ID that is already valid (`letters`, `numbers`, `_`, `-`,
+  including a leading underscore such as `_policy`) is kept verbatim.
 - Filenames such as `policy.md` become `policy-md` because case source IDs
   allow only letters, numbers, underscore and hyphen.
+- If two documents sanitize or collide onto the same ID, conversion raises
+  instead of suffixing an ID that an existing citation already refers to.
 - Bracketed citations already present in the answer (for example `[policy-md]`)
   are left unchanged so they can match those IDs.
 - The recipe **does not invent** `[source]` markers when the model answer

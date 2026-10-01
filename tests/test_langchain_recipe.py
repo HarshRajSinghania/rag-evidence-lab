@@ -54,3 +54,50 @@ class LangChainRecipeTests(unittest.TestCase):
             self.assertEqual(json.loads(out.read_text()), json.loads(FIXTURE.read_text()))
         self.assertEqual(cli_main([str(FIXTURE), "--max-flagged", "3"]), 0)
         self.assertEqual(cli_main([str(FIXTURE), "--max-flagged", "1"]), 1)
+
+    def test_preserves_valid_explicit_id_with_leading_underscore(self):
+        payload = {
+            "id": "underscore-id",
+            "query": "What is the policy?",
+            "result": "See [_policy] for the rule.",
+            "source_documents": [
+                {"page_content": "The rule is stated in the policy.", "metadata": {"id": "_policy"}}
+            ],
+        }
+        case = convert(payload)["cases"][0]
+        self.assertEqual(case["sources"][0]["id"], "_policy")
+        from rag_evidence_lab.core import validate, inspect
+        validate({"cases": [case]})
+        flags = inspect({"cases": [case]})["cases"][0]["claims"][0]["flags"]
+        self.assertNotIn("unknown_citation", flags)
+
+    def test_duplicate_explicit_ids_raise_instead_of_rewriting(self):
+        payload = {
+            "query": "q",
+            "result": "answer [a]",
+            "source_documents": [
+                {"page_content": "first", "metadata": {"id": "a"}},
+                {"page_content": "second", "metadata": {"id": "a-3"}},
+                {"page_content": "third", "metadata": {"id": "a"}},
+            ],
+        }
+        with self.assertRaises(ValueError) as ctx:
+            convert(payload)
+        self.assertIn("duplicate source ID", str(ctx.exception))
+
+    def test_sanitization_collision_raises(self):
+        payload = {
+            "query": "q",
+            "result": "answer",
+            "source_documents": [
+                {"page_content": "first", "metadata": {"filename": "notes.md"}},
+                {"page_content": "second", "metadata": {"filename": "notes.md"}},
+            ],
+        }
+        with self.assertRaises(ValueError) as ctx:
+            convert(payload)
+        self.assertIn("duplicate source ID", str(ctx.exception))
+
+    def test_recipe_does_not_import_langchain(self):
+        import sys
+        self.assertNotIn("langchain", sys.modules)

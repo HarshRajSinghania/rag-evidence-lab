@@ -1,9 +1,12 @@
 """Convert a documented LangChain RetrievalQA-style export into cases JSON.
 
-Tested against the LangChain 0.2 / 0.3 source-document shape (page_content +
-metadata), without importing LangChain. The recipe never invents bracketed
-citations: only IDs already present in the answer, or IDs taken from document
-metadata, are preserved.
+This recipe is tested against a synthetic LangChain-shaped fixture that matches
+the RetrievalQA / create_retrieval_chain source-document shape used by
+LangChain 0.2 / 0.3 (page_content + metadata). The tests do not import
+LangChain and do not exercise an installed LangChain version.
+
+The recipe never invents bracketed citations: only IDs already present in the
+answer, or IDs taken from document metadata, are preserved.
 
 Usage:
     python examples/recipes/langchain_qa.py examples/recipes/langchain_qa_input.json
@@ -11,18 +14,36 @@ Usage:
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
 
+VALID_ID = re.compile(r"[\w-]+")
+
+
+def _sanitize_filename(value: str) -> str:
+    name = Path(value.strip()).name
+    cleaned = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in name)
+    cleaned = cleaned.strip("-_")
+    return cleaned
+
+
 def source_id(doc: dict, index: int) -> str:
+    """Return a case-schema source ID for one LangChain-shaped document.
+
+    An already-valid explicit ``metadata.id`` / ``source`` / ``filename`` is
+    kept verbatim so citations such as ``[_policy]`` keep matching. Path-like
+    or otherwise invalid values are sanitized to the allowed character set.
+    """
     meta = doc.get("metadata") or {}
     for key in ("id", "source", "filename"):
         value = meta.get(key)
         if isinstance(value, str) and value.strip():
-            name = Path(value.strip()).name
-            cleaned = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in name)
-            cleaned = cleaned.strip("-_")
+            raw = value.strip()
+            if VALID_ID.fullmatch(raw):
+                return raw
+            cleaned = _sanitize_filename(raw)
             if cleaned:
                 return cleaned
     return f"doc-{index + 1}"
@@ -53,9 +74,12 @@ def convert_record(record: dict, index: int) -> dict:
     for i, doc in enumerate(raw_docs):
         if not isinstance(doc, dict):
             raise ValueError("source document must be an object")
-        sid = source_id(doc, i)
+    sid = source_id(doc, i)
         if sid in seen:
-            sid = f"{sid}-{i + 1}"
+            raise ValueError(
+                f"duplicate source ID {sid!r} after sanitization; "
+                "refusing to rewrite an existing citation target"
+            )
         seen.add(sid)
         sources.append({"id": sid, "text": document_text(doc)})
     case_id = record.get("id")
